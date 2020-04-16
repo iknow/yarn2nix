@@ -93,6 +93,7 @@ in rec {
     preBuild ? "",
     postBuild ? "",
     workspaceDependencies ? [], # List of yarn packages
+    nohoist ? [],
   }:
     let
       offlineCache = importOfflineCache { inherit yarnFetch yarnNix; };
@@ -114,7 +115,13 @@ in rec {
 
       workspaceJSON = pkgs.writeText
         "${name}-workspace-package.json"
-        (builtins.toJSON { private = true; workspaces = ["deps/**"]; }); # scoped packages need second splat
+        (builtins.toJSON {
+          private = true;
+          workspaces = {
+            packages = ["deps/**"]; # scoped packages need second splat
+            inherit nohoist;
+          };
+        });
 
       workspaceDependencyLinks = lib.concatMapStringsSep "\n"
         (dep: ''
@@ -253,6 +260,7 @@ in rec {
     extraBuildInputs ? [],
     publishBinsFor ? null,
     workspaceDependencies ? [], # List of yarnPackages
+    nohoist ? [],
     ...
   }@attrs:
     let
@@ -271,7 +279,7 @@ in rec {
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
-        inherit packageJSON pname version yarnLock yarnNix yarnFlags yarnFetch pkgConfig;
+        inherit packageJSON pname version yarnLock yarnNix yarnFlags yarnFetch pkgConfig nohoist;
       };
 
       publishBinsFor_ = unlessNull publishBinsFor [pname];
