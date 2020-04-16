@@ -130,6 +130,8 @@ in rec {
         '')
         workspaceDependencies;
 
+    useWorkspace = workspaceDependencies != [];
+
     in stdenv.mkDerivation {
       inherit preBuild postBuild name;
       phases = ["configurePhase" "buildPhase"];
@@ -143,9 +145,14 @@ in rec {
       buildPhase = ''
         runHook preBuild
 
-        mkdir -p "deps/${pname}"
-        cp ${packageJSON} "deps/${pname}/package.json"
-        cp ${workspaceJSON} ./package.json
+        ${if useWorkspace then ''
+          mkdir -p "deps/${pname}"
+          cp ${packageJSON} "deps/${pname}/package.json"
+          cp ${workspaceJSON} ./package.json
+        '' else ''
+          cp ${packageJSON} ./package.json
+        ''}
+
         cp ${yarnLock} ./yarn.lock
         chmod +w ./yarn.lock
 
@@ -162,7 +169,9 @@ in rec {
 
         mkdir $out
         mv node_modules $out/
-        mv deps $out/
+        ${lib.optionalString useWorkspace ''
+          mv deps $out/
+      ''}
         patchShebangs $out
 
         runHook postBuild
@@ -313,6 +322,8 @@ in rec {
         '')
         workspaceDependenciesTransitive;
 
+      useWorkspace = workspaceDependencies != [];
+
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["yarnFetch" "pkgConfig" "workspaceDependencies"] // {
       inherit src pname;
 
@@ -339,16 +350,27 @@ in rec {
         mv $NIX_BUILD_TOP/temp "$PWD/deps/${pname}"
         cd $PWD
 
-        if [ -d ${deps}/deps/${pname}/node_modules ]; then
-          cp -r ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+        ${if useWorkspace then ''
+          if [ -d ${deps}/deps/${pname}/node_modules ]; then
+            cp -r ${deps}/deps/${pname}/node_modules "deps/${pname}/node_modules"
+            chmod -R +w "deps/${pname}/node_modules"
+          fi
+
+          cp -r $node_modules node_modules
+          chmod -R +w node_modules
+        '' else ''
+          cp -r $node_modules deps/${pname}/node_modules
           chmod -R +w "deps/${pname}/node_modules"
-        fi
-        cp -r $node_modules node_modules
-        chmod -R +w node_modules
+
+          mkdir node_modules
+        ''}
 
         ${linkDirFunction}
 
         linkDirToDirLinks "$(dirname node_modules/${pname})"
+        ${lib.optionalString (! useWorkspace) ''
+          ln -sT "../deps/${pname}" "node_modules/${pname}"
+        ''}
 
         ${workspaceDependencyCopy}
 
@@ -425,14 +447,12 @@ in rec {
     buildPhase = ''
       source ${./nix/expectShFunctions.sh}
 
-      expectFilePresent ./node_modules/.yarn-integrity
-
       # check dependencies are installed
-      expectFilePresent ./node_modules/@yarnpkg/lockfile/package.json
+      expectFilePresent ./deps/yarn2nix/node_modules/@yarnpkg/lockfile/package.json
 
       # check devDependencies are not installed
-      expectFileOrDirAbsent ./node_modules/.bin/eslint
-      expectFileOrDirAbsent ./node_modules/eslint/package.json
+      expectFileOrDirAbsent ./deps/yarn2nix/node_modules/.bin/eslint
+      expectFileOrDirAbsent ./deps/yarn2nix/node_modules/eslint/package.json
     '';
   };
 
