@@ -93,6 +93,7 @@ in rec {
     preBuild ? "",
     postBuild ? "",
     workspaceDependencies ? [], # List of yarn packages
+    forceWorkspace ? false,
     nohoist ? [],
   }:
     let
@@ -130,7 +131,7 @@ in rec {
         '')
         workspaceDependencies;
 
-    useWorkspace = workspaceDependencies != [];
+    useWorkspace = workspaceDependencies != [] || forceWorkspace;
 
     in stdenv.mkDerivation {
       inherit preBuild postBuild name;
@@ -249,6 +250,7 @@ in rec {
         value = mkYarnPackage (
           builtins.removeAttrs attrs ["packageOverrides"]
           // { inherit src packageJSON yarnLock workspaceDependencies; }
+          // { forceWorkspace = true; }
           // lib.attrByPath [name] {} packageOverrides
         );
       })
@@ -269,6 +271,7 @@ in rec {
     extraBuildInputs ? [],
     publishBinsFor ? null,
     workspaceDependencies ? [], # List of yarnPackages
+    forceWorkspace ? false,
     nohoist ? [],
     ...
   }@attrs:
@@ -288,7 +291,7 @@ in rec {
         name = "${safeName}-modules-${version}";
         preBuild = yarnPreBuild;
         workspaceDependencies = workspaceDependenciesTransitive;
-        inherit packageJSON pname version yarnLock yarnNix yarnFlags yarnFetch pkgConfig nohoist;
+        inherit packageJSON pname version yarnLock yarnNix yarnFlags yarnFetch pkgConfig forceWorkspace nohoist;
       };
 
       publishBinsFor_ = unlessNull publishBinsFor [pname];
@@ -322,7 +325,7 @@ in rec {
         '')
         workspaceDependenciesTransitive;
 
-      useWorkspace = workspaceDependencies != [];
+      useWorkspace = workspaceDependencies != [] || forceWorkspace;
 
     in stdenv.mkDerivation (builtins.removeAttrs attrs ["yarnFetch" "pkgConfig" "workspaceDependencies"] // {
       inherit src pname;
