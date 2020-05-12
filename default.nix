@@ -369,7 +369,9 @@ in rec {
 
         linkDirToDirLinks "$(dirname node_modules/${pname})"
         ${lib.optionalString (! useWorkspace) ''
-          ln -sT "../deps/${pname}" "node_modules/${pname}"
+          # pname may include slashes, so use --relative to compute the
+          # appropriate link.
+          ln -sT --relative "deps/${pname}" "node_modules/${pname}"
         ''}
 
         ${workspaceDependencyCopy}
