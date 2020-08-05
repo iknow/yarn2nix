@@ -14,11 +14,10 @@ const USAGE = `
 Usage: yarn2nix [options]
 
 Options:
-  -h --help           Shows this help.
-  --no-nix            Hide the nix output
-  --no-patch          Don't patch the lockfile if hashes are missing
-  --lockfile=FILE     Specify path to the lockfile [default: ./yarn.lock].
-  --builtin-fetchgit  Use builtin fetchGit for git dependencies to support on-the-fly generation of yarn.nix without an internet connection
+  -h --help        Shows this help.
+  --no-nix         Hide the nix output
+  --no-patch       Don't patch the lockfile if hashes are missing
+  --lockfile=FILE  Specify path to the lockfile [default: ./yarn.lock].
 `
 
 const options = docopt(USAGE)
@@ -81,7 +80,7 @@ const fixedPkgsPromises = R.map(fixPkgAddMissingSha1, pkgs)
 
   if (!options['--no-nix']) {
     // print to stdout
-    console.log(generateNix(fixedPkgs, options['--builtin-fetchgit']))
+    console.log(generateNix(fixedPkgs))
   }
 })().catch(error => {
   console.error(error)
